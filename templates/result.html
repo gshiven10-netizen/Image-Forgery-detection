@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forgery Analysis Result</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    <div class="result-page">
+        <div class="result-header-card">
+            <div>
+                <div class="badge">Analysis Complete</div>
+                <h1>Forgery Detection Result</h1>
+                <p class="description">
+                    The uploaded image has been processed and suspicious regions have been marked.
+                </p>
+            </div>
+            <a href="/" class="back-btn">← Analyze Another Image</a>
+        </div>
+
+        <div class="result-grid">
+            <div class="image-panel">
+                <h2>Marked Output Image</h2>
+                <img
+                    src="{{ url_for('static', filename='uploads/' + image) }}"
+                    alt="Analyzed Image"
+                    class="result-image"
+                >
+            </div>
+
+            <div class="info-panel">
+                <h2>Prediction Summary</h2>
+
+                <div class="metric-card">
+                    <span class="metric-label">Prediction</span>
+                    <span class="metric-value">{{ predicted_class }}</span>
+                </div>
+
+                <div class="metric-card">
+                    <span class="metric-label">Confidence</span>
+                    <span class="metric-value">{{ confidence }}%</span>
+                </div>
+
+                <div class="metric-card">
+                    <span class="metric-label">Model Accuracy</span>
+                    <span class="metric-value">{{ accuracy }}%</span>
+                </div>
+
+                <div class="metric-card">
+                    <span class="metric-label">Possible Forgery Types</span>
+                    <span class="metric-value">Copy-Move / Splicing</span>
+                </div>
+
+                <div class="metric-note">
+                    Red bordered regions represent suspicious areas detected by the analysis pipeline.
+                </div>
+            </div>
+        </div>
+
+        <div class="matrix-section">
+            <h2>Confusion Matrix</h2>
+            <div class="matrix-card">
+                <img
+                    src="{{ url_for('static', filename='confusion_matrix.png') }}"
+                    alt="Confusion Matrix"
+                    class="matrix-image"
+                >
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Environments
+venv/
+venv310/
+env/
+.env
+
+# Cache
+__pycache__/
+*.pyc
+
+# Models
+*.h5
+*.keras
+
+# OS generated files
+.DS_Store

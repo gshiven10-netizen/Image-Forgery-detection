@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Forgery Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    <div class="page-shell">
+        <div class="hero-card">
+            <div class="badge">AI Powered Digital Forensics</div>
+            <h1>Image Forgery Detection Framework</h1>
+            <p class="description">
+                Upload an image to analyse possible tampering such as copy-move forgery
+                and image splicing. The system highlights suspicious regions and shows
+                prediction confidence with evaluation metrics.
+            </p>
+
+            <form id="upload-form" action="/upload" method="POST" enctype="multipart/form-data">
+                <div class="drag-area" id="drag-area">
+                    <div class="icon">🖼️</div>
+                    <div class="drag-title">Drag & Drop Image Here</div>
+                    <div class="text">or click to browse from your device</div>
+                    <input type="file" name="file" id="image-input" accept="image/*" required>
+                </div>
+
+                <div class="selected-file" id="selected-file">No image selected</div>
+
+                <button type="submit" class="btn-primary">Analyze Image</button>
+
+                <div id="loader" class="loader hidden">
+                    <div class="spinner"></div>
+                    <div class="loader-text">Analyzing image, detecting suspicious regions...</div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dragdrop.js') }}"></script>
+</body>
+</html>
