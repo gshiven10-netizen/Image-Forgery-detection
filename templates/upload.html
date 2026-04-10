@@ -17,6 +17,13 @@
                 prediction confidence with evaluation metrics.
             </p>
 
+            {% if error %}
+            <div class="error-alert">
+                <span class="icon">⚠️</span>
+                {{ error }}
+            </div>
+            {% endif %}
+
             <form id="upload-form" action="/upload" method="POST" enctype="multipart/form-data">
                 <div class="drag-area" id="drag-area">
                     <div class="icon">🖼️</div>

@@ -2,6 +2,7 @@ import cv2
 import os
 import numpy as np
 import tensorflow as tf
+import gc
 from processing.detector import detect_forgery_overlay
 
 # ---------- BUILD MODEL + LOAD WEIGHTS ----------
@@ -17,7 +18,7 @@ def get_model():
         from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, BatchNormalization, Dropout
         from tensorflow.keras.models import Model
 
-        print("DEBUG: Reconstructing model architecture...")
+        print("DEBUG: Pre-heating model architecture...", flush=True)
         # Base model
         base_model = EfficientNetB0(weights=None, include_top=False, input_shape=(224, 224, 3))
 
@@ -38,15 +39,15 @@ def get_model():
         weights_path = "weights.weights.h5"
         if os.path.exists(weights_path):
             model.load_weights(weights_path)
-            print(f"✅ Model weights loaded successfully from {weights_path}")
+            print(f"✅ SUCCESS: Model weights loaded from {weights_path}", flush=True)
         else:
-            print(f"⚠️ Warning: Weights file {weights_path} not found!")
-            model = None # Force it to None so we don't try to predict with random weights
+            print(f"⚠️ ERROR: Weights file {weights_path} not found!", flush=True)
+            model = None 
         
         return model
 
     except Exception as e:
-        print(f"❌ Critical: Model reconstruction/load failed: {e}")
+        print(f"❌ CRITICAL ERROR in get_model: {e}", flush=True)
         import traceback
         traceback.print_exc()
         return None
@@ -56,42 +57,40 @@ model = get_model()
 
 # ---------- PREDICTION FUNCTION ----------
 def predict_forgery(image_path):
-    print(f"DEBUG: Processing image: {image_path}")
+    print(f"DEBUG: Process started for {image_path}", flush=True)
     filename = os.path.basename(image_path)
 
     predicted_class = "Analysis Failed"
     confidence = 0.0
     accuracy = 0.0
-    output_filename = filename # Default to original if processing fails
+    output_filename = filename
 
     # ---------- RUN MODEL ----------
     current_model = get_model()
     if current_model is not None:
         try:
+            print("STEP 1: Reading image for TF...", flush=True)
             img = cv2.imread(image_path)
             if img is None:
-                print(f"❌ Error: Could not read image at {image_path}")
                 return "Error: Unsupported Image", 0.0, 0.0, filename
 
             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             img_resized = cv2.resize(img_rgb, (224, 224))
-            img_final = np.expand_dims(img_resized, axis=0) / 255.0  # Normalize if used during training
+            
+            # NOTE: Division by 255 removed because training used [0, 255] range
+            img_final = np.expand_dims(img_resized, axis=0).astype(np.float32)
 
-            print("DEBUG: Running model prediction...")
+            print("STEP 2: Running TF inference...", flush=True)
             prediction = current_model.predict(img_final, verbose=0)[0][0]
-            print(f"DEBUG: Prediction raw value: {prediction}")
+            print(f"DEBUG: Raw prediction value: {prediction}", flush=True)
 
             if prediction < 0.5:
-                # Assuming 0 is Forged and 1 is Authentic based on typical sigmoid outputs
-                # But looking at previous code: if prediction > 0.5: Authentic
-                # Let's keep consistency with previous logic but make it clearer
                 predicted_class = "Authentic"
                 confidence = float(prediction)
             else:
                 predicted_class = "Forged"
-                confidence = float(prediction) # Usually confidence is the probability of the class
+                confidence = float(prediction)
             
-            # Recalculate confidence for better display
             if predicted_class == "Forged":
                 display_confidence = confidence * 100
             else:
@@ -100,43 +99,37 @@ def predict_forgery(image_path):
             accuracy = display_confidence / 100.0
 
         except Exception as e:
-            print(f"❌ Prediction error: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"❌ TF Error: {e}", flush=True)
             predicted_class = "Prediction Error"
     else:
-        print("❌ Model is None, skipping prediction logic")
         predicted_class = "Model Not Loaded"
 
     # ---------- OVERLAY (FORGERY HIGHLIGHTING) ----------
     try:
         result_dir = "static/uploads"
-        os.makedirs(result_dir, exist_ok=True)
         output_filename = "result_" + filename
         output_path = os.path.join(result_dir, output_filename)
 
         if predicted_class == "Forged":
-            print("DEBUG: Generating forgery overlay...")
+            print("STEP 3: Running ORB Forgery Detection...", flush=True)
+            # detect_forgery_overlay can be slow, hence the Procfile timeout boost
             result_image = detect_forgery_overlay(image_path)
+            print("STEP 4: Saving marked image...", flush=True)
         else:
+            print("STEP 3: Skipping ORB, using original...", flush=True)
             result_image = cv2.imread(image_path)
-            if result_image is None:
-                print(f"❌ Error: Could not read image for result: {image_path}")
-                return "Error: Image Load Failure", 0.0, 0.0, filename
 
-        # Ensure result_image is valid before saving
         if result_image is not None:
-            success = cv2.imwrite(output_path, result_image)
-            if not success:
-                print(f"❌ Error: Failed to write image to {output_path}")
-                output_filename = filename # Fallback to original
-        else:
-            output_filename = filename
+            cv2.imwrite(output_path, result_image)
+        
+        # Cleanup
+        print("STEP 5: Memory cleanup...", flush=True)
+        del result_image
+        gc.collect()
 
         return predicted_class, accuracy, accuracy, output_filename
 
     except Exception as e:
-        print(f"❌ Post-processing error: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"❌ Overlay Error: {e}", flush=True)
         return predicted_class, 0.0, 0.0, filename
+ss, 0.0, 0.0, filename

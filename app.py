@@ -50,18 +50,19 @@ def upload():
 
         # Call prediction with error handling
         try:
-            logger.info("Calling predict_forgery...")
+            logger.info("--- Starting Prediction Pipeline ---")
             predicted_class, confidence, accuracy, result_image = predict_forgery(filepath)
-            logger.info(f"Prediction result: {predicted_class}, Accuracy: {accuracy}")
+            logger.info(f"--- Pipeline Finished: {predicted_class} ---")
         except Exception as e:
             logger.error(f"Critical error during prediction: {e}", exc_info=True)
-            return render_template("upload.html", error="An error occurred during image analysis. Please try again.")
+            return render_template("upload.html", error=f"Analysis failed: {str(e)[:100]}")
 
         # Ensure values are safe for display
         try:
             display_conf = round(float(confidence or 0) * 100, 2)
             display_acc = round(float(accuracy or 0) * 100, 2)
         except (TypeError, ValueError):
+            logger.warning("Could not parse prediction values, numeric results will be zeroed")
             display_conf = 0.0
             display_acc = 0.0
 
@@ -76,7 +77,7 @@ def upload():
         )
     except Exception as e:
         logger.error(f"General upload error: {e}", exc_info=True)
-        return "An unexpected error occurred", 500
+        return render_template("upload.html", error="An unexpected error occurred during upload.")
 
 if __name__ == "__main__":
     # Use environment port for Render compatibility

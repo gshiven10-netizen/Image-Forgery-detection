@@ -60,6 +60,20 @@ h1 {
     margin-bottom: 28px;
 }
 
+.error-alert {
+    background: rgba(255, 68, 68, 0.15);
+    border: 1px solid rgba(255, 68, 68, 0.3);
+    color: #ff8e8e;
+    padding: 14px 20px;
+    border-radius: 14px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
 .drag-area {
     position: relative;
     border: 2px dashed rgba(255, 255, 255, 0.28);
