@@ -1,5 +1,12 @@
 import cv2
 import os
+
+# ---------- MEMORY OPTIMIZATION (MUST BE BEFORE TF IMPORT) ----------
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["TF_NUM_INTRAOP_THREADS"] = "1"
+os.environ["TF_NUM_INTEROP_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+
 import numpy as np
 import tensorflow as tf
 import gc
@@ -19,6 +26,11 @@ def get_model():
         from tensorflow.keras.models import Model
 
         print("DEBUG: Pre-heating model architecture...", flush=True)
+        
+        # Limit TF thread pool internally
+        tf.config.threading.set_intra_op_parallelism_threads(1)
+        tf.config.threading.set_inter_op_parallelism_threads(1)
+
         # Base model
         base_model = EfficientNetB0(weights=None, include_top=False, input_shape=(224, 224, 3))
 
@@ -44,6 +56,8 @@ def get_model():
             print(f"⚠️ ERROR: Weights file {weights_path} not found!", flush=True)
             model = None 
         
+        # Aggressive cleanup after load
+        gc.collect()
         return model
 
     except Exception as e:
@@ -65,6 +79,9 @@ def predict_forgery(image_path):
     accuracy = 0.0
     output_filename = filename
 
+    # Explicit cleanup before starting
+    gc.collect()
+
     # ---------- READ & RESIZE IF TOO LARGE (Memory Safety) ----------
     try:
         print("STEP 0: Pre-processing & Resizing...", flush=True)
@@ -72,13 +89,12 @@ def predict_forgery(image_path):
         if img is None:
             return "Error: Unsupported Image", 0.0, 0.0, filename
         
-        # Max dimension 1600px to prevent OOM
+        # Max dimension 1200px (reduced from 1600 for even more safety)
         h, w = img.shape[:2]
-        if max(h, w) > 1600:
-            scale = 1600 / max(h, w)
+        if max(h, w) > 1200:
+            scale = 1200 / max(h, w)
             img = cv2.resize(img, (int(w * scale), int(h * scale)))
             print(f"DEBUG: Resized image to {img.shape[1]}x{img.shape[0]}", flush=True)
-            # Save the resized version back to the path so ORB uses it too
             cv2.imwrite(image_path, img)
     except Exception as e:
         print(f"❌ Pre-processing Error: {e}", flush=True)
@@ -91,7 +107,6 @@ def predict_forgery(image_path):
             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             img_resized = cv2.resize(img_rgb, (224, 224))
             
-            # NOTE: Division by 255 removed because training used [0, 255] range
             img_final = np.expand_dims(img_resized, axis=0).astype(np.float32)
 
             print("STEP 2: Running TF inference...", flush=True)
@@ -111,6 +126,10 @@ def predict_forgery(image_path):
                 display_confidence = (1 - confidence) * 100
                 
             accuracy = display_confidence / 100.0
+            
+            # Immediate cleanup after inference
+            del img_final
+            gc.collect()
 
         except Exception as e:
             print(f"❌ TF Error: {e}", flush=True)
@@ -126,7 +145,6 @@ def predict_forgery(image_path):
 
         if predicted_class == "Forged":
             print("STEP 3: Running ORB Forgery Detection...", flush=True)
-            # detect_forgery_overlay can be slow, hence the Procfile timeout boost
             result_image = detect_forgery_overlay(image_path)
             print("STEP 4: Saving marked image...", flush=True)
         else:
