@@ -25,6 +25,10 @@ def allowed_file(filename):
 def home():
     return render_template("upload.html")
 
+@app.route("/health")
+def health():
+    return {"status": "healthy", "version": "1.2.0", "details": "Fix: Syntax error & Resize OOM"}
+
 @app.route("/upload", methods=["POST"])
 def upload():
     try:

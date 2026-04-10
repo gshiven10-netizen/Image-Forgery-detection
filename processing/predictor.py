@@ -65,15 +65,29 @@ def predict_forgery(image_path):
     accuracy = 0.0
     output_filename = filename
 
+    # ---------- READ & RESIZE IF TOO LARGE (Memory Safety) ----------
+    try:
+        print("STEP 0: Pre-processing & Resizing...", flush=True)
+        img = cv2.imread(image_path)
+        if img is None:
+            return "Error: Unsupported Image", 0.0, 0.0, filename
+        
+        # Max dimension 1600px to prevent OOM
+        h, w = img.shape[:2]
+        if max(h, w) > 1600:
+            scale = 1600 / max(h, w)
+            img = cv2.resize(img, (int(w * scale), int(h * scale)))
+            print(f"DEBUG: Resized image to {img.shape[1]}x{img.shape[0]}", flush=True)
+            # Save the resized version back to the path so ORB uses it too
+            cv2.imwrite(image_path, img)
+    except Exception as e:
+        print(f"❌ Pre-processing Error: {e}", flush=True)
+
     # ---------- RUN MODEL ----------
     current_model = get_model()
     if current_model is not None:
         try:
-            print("STEP 1: Reading image for TF...", flush=True)
-            img = cv2.imread(image_path)
-            if img is None:
-                return "Error: Unsupported Image", 0.0, 0.0, filename
-
+            print("STEP 1: Preparing image for TF...", flush=True)
             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             img_resized = cv2.resize(img_rgb, (224, 224))
             
@@ -132,4 +146,3 @@ def predict_forgery(image_path):
     except Exception as e:
         print(f"❌ Overlay Error: {e}", flush=True)
         return predicted_class, 0.0, 0.0, filename
-ss, 0.0, 0.0, filename
