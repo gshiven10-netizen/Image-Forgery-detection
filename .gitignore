@@ -9,8 +9,15 @@ __pycache__/
 *.pyc
 
 # Models
-# *.h5
-# *.keras
+*.h5
+*.keras
+
+# Dataset
+Dataset/
+
+# Static Uploads (keep directory, ignore contents)
+static/uploads/*
+!static/uploads/.gitkeep
 
 # OS generated files
 .DS_Store
